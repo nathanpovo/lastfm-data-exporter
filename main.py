@@ -27,8 +27,85 @@ import os
 
 lock = threading.Lock()
 
+def add_tracks(tracksList ,finalJson):
+    
+    Final = finalJson
+    Tracks = tracksList
+    
+    artists = Final['artists']
+    
+    for track in Tracks['tracks']:
+        
+        
+        # checks if a track is currently playing (according to lastfm)
+        # if it is the track is skipped
+        try:
+            if track['@attr']['nowplaying'] == 'true':
+                #print('Found now playing track')
+                continue
+        except KeyError:
+            pass
+        
+        track_artist_info = track['artist']
+        artist_mbid = track_artist_info['mbid']
+        artist_name = track_artist_info['name']
+        file_artist_mbid = next((item for item in artists if item["mbid"] == artist_mbid), None)
+        file_artist_name = next((item for item in artists if item["name"] == artist_name), None)
+        if file_artist_name == None:
+            artists.append({'name': artist_name,'mbid': artist_mbid, 'albums':[]})
+            currentArtist = next((item for item in artists if item["name"] == artist_name), None)
+        elif file_artist_name != None:
+            if file_artist_mbid == None:
+                currentArtist = file_artist_name
+            elif file_artist_mbid != None:
+                currentArtist = file_artist_name
+        #
+        
+        track_album_info = track['album']
+        album_mbid = track_album_info['mbid']
+        album_name = track_album_info['#text']
+        file_album_mbid = next((item for item in currentArtist['albums'] if item["mbid"] == album_mbid), None)
+        file_album_name = next((item for item in currentArtist['albums'] if item["name"] == album_name), None)
+        if file_album_name == None:
+            if file_album_mbid == None:
+                if album_name == None:
+                    currentArtist['albums'].append({'name': album_name,'mbid': album_mbid, 'tracks':[], 'playcount': 0})
+                    currentAlbum = next((item for item in currentArtist['albums'] if item["name"] == album_name and item["mbid"] == album_mbid), None)
+                else:
+                    currentArtist['albums'].append({'name': album_name,'mbid': album_mbid, 'tracks':[], 'playcount': 0})
+                    currentAlbum = next((item for item in currentArtist['albums'] if item["name"] == album_name), None)
+            else:
+                currentArtist['albums'].append({'name': album_name,'mbid': album_mbid, 'tracks':[], 'playcount': 0})
+                currentAlbum = next((item for item in currentArtist['albums'] if item["name"] == album_name), None)
+        elif file_album_name != None:
+            if file_album_mbid == None:
+                currentAlbum = file_album_name
+            elif file_album_mbid != None:
+                currentAlbum = file_album_name
+        #
+        
+        track_mbid = track['mbid']
+        track_name = track['name']
+        file_track_mbid = next((item for item in currentAlbum['tracks'] if item["mbid"] == track_mbid), None)
+        file_track_name = next((item for item in currentAlbum['tracks'] if item["name"] == track_name), None)
+        if file_track_name == None:
+            currentAlbum['tracks'].append({'name': track_name,'mbid': track_mbid, 'timestamps':[], 'playcount': 0})
+            currentTrack = next((item for item in currentAlbum['tracks'] if item["name"] == track_name), None)
+        elif file_track_name != None:
+            if file_track_mbid == None:
+                currentTrack = file_track_name
+            elif file_track_mbid != None:
+                currentTrack = file_track_name
+        #
+        
+        track_timestamp = track['date']['uts']
+        currentTrack['timestamps'].append(track_timestamp)
 
-def get_link(page, limit, lock, start):
+
+def get_link(tracksList, page, limit, lock, start):
+    
+    Tracks = tracksList
+    
     page_time = time.clock()
     url_page = "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&extended=1" + "&user=" + username + "&page=" + str(page) + "&limit=" + str(limit) + "&from=" + str(start) + "&api_key=" + api_key + "&format=json"
     url_page_req = urllib.request.urlopen(url_page)
@@ -99,6 +176,8 @@ def get_tracks(start, limit, filename):
     
     pages_time = time.clock()
     while pages_left > 0:
+        pageTracks = {}
+        pageTracks['tracks'] = []
         #print('CurrentPage {}' .format(CurrentPage))
         # number of threads to open
         # for loop with a range from the current page to (currentpage + num_Threads)
@@ -111,7 +190,7 @@ def get_tracks(start, limit, filename):
             print('----------------------------------------------------------')
         
         for page in range(CurrentPage, (CurrentPage + num_Threads)):
-            downloadThread = threading.Thread(target=get_link, args=(page, limit, lock, start))
+            downloadThread = threading.Thread(target=get_link, args=(pageTracks, page, limit, lock, start))
             downloadThreads.append(downloadThread)
             downloadThread.start()
             pagesAcquired += 1
@@ -122,81 +201,20 @@ def get_tracks(start, limit, filename):
         pages_left = total_pages - pagesAcquired
         print('Pages left {}' .format(pages_left))
         CurrentPage += num_Threads
+        
+        add_tracks(pageTracks, Final)
     ###
     print('----------------------------------------------------------')
-    print('number of tracks obtained: {}' .format(len(Tracks['tracks'])))
-    print('----------------------------------------------------------')
+    #print('number of tracks obtained: {}' .format(len(pageTracks['tracks'])))
     print('Time to get all tracks: {}' .format(time.clock() - pages_time))
+    print('----------------------------------------------------------')
     
     
-    artists = Final['artists']
     
-    for track in Tracks['tracks']:
-        
-        
-        # checks if a track is currently playing (according to lastfm)
-        # if it is the track is skipped
-        try:
-            if track['@attr']['nowplaying'] == 'true':
-                #print('Found now playing track')
-                continue
-        except KeyError:
-            pass
-        
-        track_artist_info = track['artist']
-        artist_mbid = track_artist_info['mbid']
-        artist_name = track_artist_info['name']
-        file_artist_mbid = next((item for item in artists if item["mbid"] == artist_mbid), None)
-        file_artist_name = next((item for item in artists if item["name"] == artist_name), None)
-        if file_artist_name == None:
-            artists.append({'name': artist_name,'mbid': artist_mbid, 'albums':[]})
-            currentArtist = next((item for item in artists if item["name"] == artist_name), None)
-        elif file_artist_name != None:
-            if file_artist_mbid == None:
-                currentArtist = file_artist_name
-            elif file_artist_mbid != None:
-                currentArtist = file_artist_name
-        #
-        
-        track_album_info = track['album']
-        album_mbid = track_album_info['mbid']
-        album_name = track_album_info['#text']
-        file_album_mbid = next((item for item in currentArtist['albums'] if item["mbid"] == album_mbid), None)
-        file_album_name = next((item for item in currentArtist['albums'] if item["name"] == album_name), None)
-        if file_album_name == None:
-            if file_album_mbid == None:
-                if album_name == None:
-                    currentArtist['albums'].append({'name': album_name,'mbid': album_mbid, 'tracks':[], 'playcount': 0})
-                    currentAlbum = next((item for item in currentArtist['albums'] if item["name"] == album_name and item["mbid"] == album_mbid), None)
-                else:
-                    currentArtist['albums'].append({'name': album_name,'mbid': album_mbid, 'tracks':[], 'playcount': 0})
-                    currentAlbum = next((item for item in currentArtist['albums'] if item["name"] == album_name), None)
-            else:
-                currentArtist['albums'].append({'name': album_name,'mbid': album_mbid, 'tracks':[], 'playcount': 0})
-                currentAlbum = next((item for item in currentArtist['albums'] if item["name"] == album_name), None)
-        elif file_album_name != None:
-            if file_album_mbid == None:
-                currentAlbum = file_album_name
-            elif file_album_mbid != None:
-                currentAlbum = file_album_name
-        #
-        
-        track_mbid = track['mbid']
-        track_name = track['name']
-        file_track_mbid = next((item for item in currentAlbum['tracks'] if item["mbid"] == track_mbid), None)
-        file_track_name = next((item for item in currentAlbum['tracks'] if item["name"] == track_name), None)
-        if file_track_name == None:
-            currentAlbum['tracks'].append({'name': track_name,'mbid': track_mbid, 'timestamps':[], 'playcount': 0})
-            currentTrack = next((item for item in currentAlbum['tracks'] if item["name"] == track_name), None)
-        elif file_track_name != None:
-            if file_track_mbid == None:
-                currentTrack = file_track_name
-            elif file_track_mbid != None:
-                currentTrack = file_track_name
-        #
-        
-        track_timestamp = track['date']['uts']
-        currentTrack['timestamps'].append(track_timestamp)
+    #add_tracks(Tracks, Final)
+    
+    
+    
     
     total_playcount = 0
     
@@ -274,8 +292,8 @@ else:
 #
 
 while True:
-    Tracks = {}
-    Tracks['tracks'] = []
+    pageTracks = {}
+    pageTracks['tracks'] = []
     
     print('')
     command = input('Enter command: ').lower()
