@@ -1,8 +1,18 @@
+# Lastfm Data Exporter
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
+
+__Disclaimer:__ _Only tested on Windows._
+
+### Description
 A python script that exports scrobbles from last.fm
 
-The scrobbles are put into a json file and sorted in such a way as to minimize the file size.
+The scrobbles are stored in a json file and structured in such a way as to minimize the file size.
 
-List of available commands:
+### Requirements
+Python 3 (or higher)
+
+#### List of available commands:
 
 <dl>
   <dt>start over</dt>
