@@ -223,7 +223,9 @@ def get_tracks(username, start, limit, filename):
     for artist in Final['artists']:
         artist['playcount'] = 0
         for album in artist['albums']:
+            album['playcount'] = 0
             for track in album['tracks']:
+                track['playcount'] = 0
                 for timestamp in track['timestamps']:
                     total_playcount += 1
                     track['playcount'] += 1
