@@ -4,6 +4,8 @@
 
 __Disclaimer:__ _Only tested on Windows._
 
+Download both the main.py and GUI.py file. Run (double click) the GUI.py file and the program should work.
+
 ### Description
 A python script that exports scrobbles from last.fm
 
@@ -11,6 +13,8 @@ The scrobbles are stored in a json file and structured in such a way as to minim
 
 ### Requirements
 Python 3 (or higher)
+
+###Note that the list of commands below are no longer needed due to the addition of the GUI.
 
 #### List of available commands:
 
