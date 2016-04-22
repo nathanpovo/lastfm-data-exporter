@@ -25,8 +25,6 @@ import threading
 import os
 
 
-lock = threading.Lock()
-
 def add_tracks(tracksList ,finalJson):
     
     Final = finalJson
@@ -100,9 +98,9 @@ def add_tracks(tracksList ,finalJson):
         
         track_timestamp = track['date']['uts']
         currentTrack['timestamps'].append(track_timestamp)
+#
 
-
-def get_link(tracksList, page, limit, lock, start):
+def get_link(tracksList, page, limit, lock, start, username):
     
     Tracks = tracksList
     
@@ -128,7 +126,8 @@ def get_link(tracksList, page, limit, lock, start):
         else:
             print('Page {} could not aquire lock' .format(page))
 #
-def get_tracks(start, limit, filename):
+
+def get_tracks(username, start, limit, filename):
     
     if filename[-5:] == '.json':
         pass
@@ -190,7 +189,7 @@ def get_tracks(start, limit, filename):
             print('----------------------------------------------------------')
         
         for page in range(CurrentPage, (CurrentPage + num_Threads)):
-            downloadThread = threading.Thread(target=get_link, args=(pageTracks, page, limit, lock, start))
+            downloadThread = threading.Thread(target=get_link, args=(pageTracks, page, limit, lock, start, username))
             downloadThreads.append(downloadThread)
             downloadThread.start()
             pagesAcquired += 1
@@ -245,167 +244,188 @@ def get_tracks(start, limit, filename):
     print('Total number of tracks: {}' .format(total_playcount))
     print('Number of tracks added: {}' .format(total_playcount - presentTracks))
 #
+
 def update(filename):
     
     file = json.load(open(filename, 'r'))
     lastPlay = file['last track']
     startingTime = int(lastPlay) + 1
-    get_tracks(startingTime, 100, filename)
+    
+    username = file['user']
+    
+    get_tracks(username, startingTime, 50, filename)
+#
 
+def settings():
+    settings_filename = 'lastfm data settings.json'
+    username = ''
+    filename = ''
+    
+    settings = {'username': username, 'filename':filename}
+    
+    if os.path.isfile(settings_filename):
+        settings = json.load(open(settings_filename, 'r'))
+    
+    return settings
+
+#def __name__(__main__):
+    
+lock = threading.Lock()
 
 valid_chars = "!£$^&()_+{}@~¬`-=[];'#,. %s%s" % (string.ascii_letters, string.digits)
 
 api_key = '41311834bebb507fda9e070db4a0904e'
+'''
+    print("Enter the command 'help' to get list of avaliable commands.")
+    print("Press enter to exit script")
 
-print("Enter the command 'help' to get list of avaliable commands.")
-print("Press enter to exit script")
-
-settings_filename = 'lastfm data settings.json'
-if os.path.isfile(settings_filename):
-    settings = json.load(open(settings_filename, 'r'))
-    username = settings['username']
-    filename = settings['filename']
-    try:
-        api_key = settings['api_key']
-    except KeyError:
-        pass
-else:
-    username = input('Enter username: ')
-    filename = input('Enter filename: ')
-    
-    if filename[-5:] == '.json':
-        pass
+    settings_filename = 'lastfm data settings.json'
+    if os.path.isfile(settings_filename):
+        settings = json.load(open(settings_filename, 'r'))
+        username = settings['username']
+        filename = settings['filename']
+        try:
+            api_key = settings['api_key']
+        except KeyError:
+            pass
     else:
-        filename += '.json'
-    #
-    
-    filename = ''.join(c for c in filename if c in valid_chars)
-    
-    settings = {'username': username, 'filename':filename}
-    remember_settings = input('Remember settings? (yes/no)\n').lower()
-    if remember_settings == 'yes':
-        print('Settings file created')
-        print('')
-        json.dump(settings, open(settings_filename, 'w'))
-    else:
-        print('Settings will not be remembered')
-#
-
-while True:
-    pageTracks = {}
-    pageTracks['tracks'] = []
-    
-    print('')
-    command = input('Enter command: ').lower()
-    print('')
-    
-    if command == 'filename':
-        print('The current filename is: {}' .format(filename))
-    #
-    
-    elif command == 'username':
-        print('The current username is: {}' .format(username))
-    #
-    
-    elif command == 'change settings':
-        print('Press enter to leave field unchanged')
-        print('The current username is: {}' .format(username))
         username = input('Enter username: ')
-        if username != '':
-            settings['username'] = username
-            print('Username changed to {}' .format(username))
-        else:
-            username = settings["username"]
-        
-        print('The current filename is: {}' .format(filename))
         filename = input('Enter filename: ')
         
-        if filename != '':
-            if filename[-5:] == '.json':
-                pass
-            else:
-                filename += '.json'
-            #
-            filename = ''.join(c for c in filename if c in valid_chars)
-            settings['filename'] = filename
-            print('Filename changed to {}' .format(filename))
+        if filename[-5:] == '.json':
+            pass
         else:
-            filename = settings['filename']
+            filename += '.json'
+        #
         
-        json.dump(settings, open(settings_filename, 'w'))
-    #
-    
-    elif command == 'update':
-        if os.path.isfile(filename):
-            Tracks = {}
-            Tracks['tracks'] = []
-            update(filename)
+        filename = ''.join(c for c in filename if c in valid_chars)
+        
+        settings = {'username': username, 'filename':filename}
+        remember_settings = input('Remember settings? (yes/no)\n').lower()
+        if remember_settings == 'yes':
+            print('Settings file created')
+            print('')
+            json.dump(settings, open(settings_filename, 'w'))
         else:
-            print('The file with the given filename has not been found.')
-            print('Would you like to change the filename or start over(get all tracks)?')
-            sub_command = ''
-            while sub_command != 'change' or sub_command != 'start over':
-                sub_command = input('Enter command (change/start over): ')
-                if sub_command == 'change':
-                    filename = input('Enter filename: ')
-                    
-                    if filename[-5:] == '.json':
-                        pass
-                    else:
-                        filename += '.json'
-                    #
-                    filename = ''.join(c for c in filename if c in valid_chars)
-                    settings['filename'] = filename
-                    print('Filename changed to {}' .format(filename))
-                    
-                    json.dump(settings, open(settings_filename, 'w'))
-                    break
-                elif sub_command == 'start over':
-                    grand_start = time.clock()
-                    Tracks = {}
-                    Tracks['tracks'] = []
-                    limit = 200
-                    get_tracks(0, limit, filename)
-                    print('Total time taken: {}s' .format(time.clock() - grand_start))
-                    break
-                elif sub_command == 'exit':
-                    break
+            print('Settings will not be remembered')
     #
-    
-    elif command == 'start over':
-        grand_start = time.clock()
-        limit = 200
-        get_tracks(0, limit, filename)
-        print('Total time taken: {}s' .format(time.clock() - grand_start))
-    #
-    
-    elif command == 'change api':
-        api_key = input('Input api key: ')
-        print('Api key has been changed to: {}' .format(api_key))
-    #
-    
-    elif command == 'help':
-        print('start over')
-        print('    Fetches all tracks listened by a given user. The output is put into a json file.')
+
+    while True:
+        pageTracks = {}
+        pageTracks['tracks'] = []
+        
         print('')
-        print('update')
-        print("    Updates the json file given by the user. Tracks are only added from the 'last track' timestamp. Previous tracks are not touched.")
+        command = input('Enter command: ').lower()
         print('')
-        print('change settings')
-        print("    Allows the user to change their settings. Which consist of the username(not recommended changing) and the json filename.")
-        print('')
-        print('username')
-        print("    Shows the current username.")
-        print("")
-        print("filename")
-        print("    Shows the current filename.")
-        print("")
-        print('change api')
-        print("    Allows the user to change the api key used by the script.")
-        print('')
-    
-    elif command == '':
-        break
-    
-    else:
-        print('Unknown command.')
+        
+        if command == 'filename':
+            print('The current filename is: {}' .format(filename))
+        #
+        
+        elif command == 'username':
+            print('The current username is: {}' .format(username))
+        #
+        
+        elif command == 'change settings':
+            print('Press enter to leave field unchanged')
+            print('The current username is: {}' .format(username))
+            username = input('Enter username: ')
+            if username != '':
+                settings['username'] = username
+                print('Username changed to {}' .format(username))
+            else:
+                username = settings["username"]
+            
+            print('The current filename is: {}' .format(filename))
+            filename = input('Enter filename: ')
+            
+            if filename != '':
+                if filename[-5:] == '.json':
+                    pass
+                else:
+                    filename += '.json'
+                #
+                filename = ''.join(c for c in filename if c in valid_chars)
+                settings['filename'] = filename
+                print('Filename changed to {}' .format(filename))
+            else:
+                filename = settings['filename']
+            
+            json.dump(settings, open(settings_filename, 'w'))
+        #
+        
+        elif command == 'update':
+            if os.path.isfile(filename):
+                Tracks = {}
+                Tracks['tracks'] = []
+                update(filename)
+            else:
+                print('The file with the given filename has not been found.')
+                print('Would you like to change the filename or start over(get all tracks)?')
+                sub_command = ''
+                while sub_command != 'change' or sub_command != 'start over':
+                    sub_command = input('Enter command (change/start over): ')
+                    if sub_command == 'change':
+                        filename = input('Enter filename: ')
+                        
+                        if filename[-5:] == '.json':
+                            pass
+                        else:
+                            filename += '.json'
+                        #
+                        filename = ''.join(c for c in filename if c in valid_chars)
+                        settings['filename'] = filename
+                        print('Filename changed to {}' .format(filename))
+                        
+                        json.dump(settings, open(settings_filename, 'w'))
+                        break
+                    elif sub_command == 'start over':
+                        grand_start = time.clock()
+                        Tracks = {}
+                        Tracks['tracks'] = []
+                        limit = 200
+                        get_tracks(0, limit, filename)
+                        print('Total time taken: {}s' .format(time.clock() - grand_start))
+                        break
+                    elif sub_command == 'exit':
+                        break
+        #
+        
+        elif command == 'start over':
+            grand_start = time.clock()
+            limit = 200
+            get_tracks(0, limit, filename)
+            print('Total time taken: {}s' .format(time.clock() - grand_start))
+        #
+        
+        elif command == 'change api':
+            api_key = input('Input api key: ')
+            print('Api key has been changed to: {}' .format(api_key))
+        #
+        
+        elif command == 'help':
+            print('start over')
+            print('    Fetches all tracks listened by a given user. The output is put into a json file.')
+            print('')
+            print('update')
+            print("    Updates the json file given by the user. Tracks are only added from the 'last track' timestamp. Previous tracks are not touched.")
+            print('')
+            print('change settings')
+            print("    Allows the user to change their settings. Which consist of the username(not recommended changing) and the json filename.")
+            print('')
+            print('username')
+            print("    Shows the current username.")
+            print("")
+            print("filename")
+            print("    Shows the current filename.")
+            print("")
+            print('change api')
+            print("    Allows the user to change the api key used by the script.")
+            print('')
+        
+        elif command == '':
+            break
+        
+        else:
+            print('Unknown command.')
+'''
